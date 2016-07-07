@@ -1,0 +1,39 @@
+{
+  "name": "twitter-eraser",
+  "description": "A simple script to delete old tweets.",
+  "author": "Mathieu Acthernoene",
+  "version": "1.0.0",
+  "license": "MIT",
+  "main": "dist.js",
+  "private": true,
+  "scripts": {
+    "start": "node dist.js",
+    "build": "babel index.js -o dist.js",
+    "watch": "npm run -s build -- -w"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/zoontek/twitter-eraser.git"
+  },
+  "bugs": {
+    "url": "https://github.com/zoontek/twitter-eraser/issues"
+  },
+  "homepage": "https://github.com/zoontek/twitter-eraser#readme",
+  "dependencies": {
+    "bluebird": "^3.4.0",
+    "chalk": "^1.1.3",
+    "csvtojson": "^0.5.14",
+    "lodash": "^4.11.1",
+    "lowdb": "^0.13.1",
+    "twit": "^2.2.3"
+  },
+  "devDependencies": {
+    "babel-cli": "^6.7.5",
+    "babel-preset-es2015": "^6.6.0"
+  },
+  "babel": {
+    "presets": [
+      "es2015"
+    ]
+  }
+}
