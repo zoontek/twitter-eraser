@@ -8,7 +8,7 @@
   "private": true,
   "scripts": {
     "start": "node dist.js",
-    "build": "babel index.js -o dist.js",
+    "build": "babel src.js -o dist.js",
     "watch": "npm run -s build -- -w"
   },
   "repository": {
