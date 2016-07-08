@@ -4,10 +4,6 @@ var _bluebird = require('bluebird');
 
 var _bluebird2 = _interopRequireDefault(_bluebird);
 
-var _fs = require('fs');
-
-var _fs2 = _interopRequireDefault(_fs);
-
 var _path = require('path');
 
 var _path2 = _interopRequireDefault(_path);
@@ -34,25 +30,29 @@ var _lowdb2 = _interopRequireDefault(_lowdb);
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
-var parseRootJsonFile = function parseRootJsonFile(file) {
-  return JSON.parse(_fs2.default.readFileSync(_path2.default.join(__dirname, file + '.json')));
+var getFilePath = function getFilePath(file) {
+  return _path2.default.join(__dirname, file);
 };
 
-var _parseRootJsonFile = parseRootJsonFile('package');
+var requireFile = function requireFile(file) {
+  return require(getFilePath(file));
+};
 
-var appName = _parseRootJsonFile.name;
-var appDesc = _parseRootJsonFile.description;
-var appVersion = _parseRootJsonFile.version;
+var _requireFile = requireFile('package.json');
 
-var _parseRootJsonFile2 = parseRootJsonFile('config');
+var appName = _requireFile.name;
+var appDesc = _requireFile.description;
+var appVersion = _requireFile.version;
 
-var consumer_key = _parseRootJsonFile2.consumer_key;
-var consumer_secret = _parseRootJsonFile2.consumer_secret;
-var access_token = _parseRootJsonFile2.access_token;
-var access_token_secret = _parseRootJsonFile2.access_token_secret;
-var timeout_ms = _parseRootJsonFile2.timeout_ms;
-var keeped_tweets = _parseRootJsonFile2.keeped_tweets;
-var concurrency = _parseRootJsonFile2.concurrency;
+var _requireFile2 = requireFile('config.json');
+
+var consumer_key = _requireFile2.consumer_key;
+var consumer_secret = _requireFile2.consumer_secret;
+var access_token = _requireFile2.access_token;
+var access_token_secret = _requireFile2.access_token_secret;
+var timeout_ms = _requireFile2.timeout_ms;
+var keeped_tweets = _requireFile2.keeped_tweets;
+var concurrency = _requireFile2.concurrency;
 
 
 console.log('🐦  ' + _chalk2.default.bold(appName) + ' ' + _chalk2.default.dim(appVersion));
@@ -66,45 +66,65 @@ var twitterAPI = new _twit2.default({
   timeout_ms: timeout_ms
 });
 
-var csvConverter = new _csvtojson.Converter({ checkType: false });
-var progressDb = (0, _lowdb2.default)(_path2.default.join(__dirname, 'progress.json'), { storage: _fileSync2.default });
-progressDb.defaults({ 'deleted': [] }).value();
+var csvConverter = new _csvtojson.Converter({
+  checkType: false
+});
+
+var progressDb = (0, _lowdb2.default)(getFilePath('progress.json'), {
+  storage: _fileSync2.default
+});
+
+progressDb.defaults({
+  'deleted': []
+}).value();
+
 var deletedTweetsTable = progressDb.get('deleted');
 var deletedTweets = [];
 
-csvConverter.fromFile(_path2.default.join(__dirname, 'tweets.csv'), function (error, tweets) {
+var isSuccess = function isSuccess(statusCode) {
+  return statusCode >= 200 && statusCode < 300;
+};
+
+var isNotFound = function isNotFound(statusCode) {
+  return statusCode === 404;
+};
+
+var logResponse = function logResponse(resp, tweetId) {
+  if ((0, _lodash.isNil)(resp)) {
+    return console.log(_chalk2.default.bold.red('No server response!'));
+  }
+
+  var statusCode = resp.statusCode;
+  var request = resp.request;
+  var href = request.href;
+
+
+  if (isSuccess(statusCode)) {
+    console.log(_chalk2.default.bold.green('success  ') + '  ' + href);
+    deletedTweets.push(tweetId);
+  } else if (isNotFound(statusCode)) {
+    console.log(_chalk2.default.bold.yellow('not found') + '  ' + href);
+    deletedTweets.push(tweetId);
+  } else {
+    console.log(_chalk2.default.bold.red('failure  ') + '  ' + href);
+  }
+};
+
+csvConverter.fromFile(getFilePath('tweets.csv'), function (error, tweets) {
   if (error) {
     return console.warn(error);
   }
 
-  var tweetsToDelete = (0, _lodash.drop)(tweets, keeped_tweets).map(function (t) {
+  var toDeleteTweetsIds = (0, _lodash.difference)((0, _lodash.drop)(tweets, keeped_tweets).map(function (t) {
     return t.tweet_id;
-  });
-  var allTweetsMinusDeleted = (0, _lodash.difference)(tweetsToDelete, deletedTweetsTable.value());
+  }), deletedTweetsTable.value());
 
-  console.log(_chalk2.default.bold(allTweetsMinusDeleted.length + ' tweets to delete.'));
+  console.log(_chalk2.default.bold(toDeleteTweetsIds.length + ' tweets to delete.'));
 
-  _bluebird2.default.map(allTweetsMinusDeleted, function (id) {
+  _bluebird2.default.map(toDeleteTweetsIds, function (id) {
     return twitterAPI.post('statuses/destroy/' + id).then(function (_ref) {
       var resp = _ref.resp;
-
-      if ((0, _lodash.isNil)(resp)) {
-        return console.log(_chalk2.default.bold.red('No server response!'));
-      }
-
-      var statusCode = resp.statusCode;
-      var request = resp.request;
-
-
-      if (statusCode >= 200 && statusCode < 300) {
-        console.log(_chalk2.default.bold.green('success  ') + '  ' + request.href);
-        deletedTweets.push(id);
-      } else if (statusCode === 404) {
-        console.log(_chalk2.default.bold.yellow('not found') + '  ' + request.href);
-        deletedTweets.push(id);
-      } else {
-        console.log(_chalk2.default.bold.red('failure  ') + '  ' + request.href);
-      }
+      return logResponse(resp, id);
     }).catch(function (error) {
       return console.warn(error);
     });
