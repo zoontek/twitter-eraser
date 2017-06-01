@@ -1,8 +1,6 @@
 # twitter-eraser
 A simple (and fast) script to purge old tweets.
 
-![](https://dl.dropboxusercontent.com/u/4181800/twitter-eraser.png)
-
 ## Some simple steps
 
 **1) Clone (or download) this repository**
